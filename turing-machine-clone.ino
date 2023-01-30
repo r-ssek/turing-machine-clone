@@ -1,4 +1,4 @@
-// TimeOne from https://github.com/PaulStoffregen/TimerOne
+// TimerOne from https://github.com/PaulStoffregen/TimerOne
 #include <TimerOne.h>
 
 // a loose clone of a clone of a clone
@@ -8,19 +8,20 @@
 // clone: https://github.com/eparadis/turing-machine-clone
 // clone: this thing
 
-int pot1; // A6
-int pot2; // A3
-int pot3; // A7
-int pot4;
-int jack1; // A2
-int jack2; // A1
-int jack3; // A0
+// inputs
+#define POT1_PIN A0     // internal clock tempo
+#define POT2_PIN A1     // machine 1 probability 
+#define POT3_PIN A2     // machine 1 steps 
+#define POT4_PIN A3     // machine 2 probability
+#define POT5_PIN A4     // machine 2 steps
+#define SWITCH1_PIN A5  // internal clock / trigger toggle
+#define JACK1_PIN A6    // trigger input
 
-// jack4 = Out A
-#define JACK4_PIN 9
-
-// jack5 = Out B
-#define JACK5_PIN 10
+// outputs
+#define JACK2_PIN PD5  // machine 1 pattern a
+#define JACK3_PIN PD6  // machine 1 pattern b
+#define JACK4_PIN PB1  // machine 2 pattern a
+#define JACK5_PIN PB2  // machine 2 pattern b
 
 // max number of steps
 #define STEPS_MAX 32
@@ -28,21 +29,41 @@ int jack3; // A0
 // number of notes in the output voltage LUT
 #define NOTES_MAX 12
 
+int pot1;  
+int pot2; 
+int pot3; 
+int pot4; 
+int pot5;
+
+int switch1;
+int jack1;
+int jack2;
+int jack3;
+int jack4;
+int jack5; 
+
 bool trigger = false;
 
-int pattern_a[STEPS_MAX];
-int pattern_b[STEPS_MAX];
+int m1_pattern_a[STEPS_MAX];
+int m1_pattern_b[STEPS_MAX];
+int m2_pattern_a[STEPS_MAX];
+int m2_pattern_b[STEPS_MAX];
 int notes[NOTES_MAX];
-byte patternIndex = 0;
 
+byte m1_pattern_index = 0;
+byte m2_pattern_index = 0;
 
 void setup() {
+  pinMode(JACK2_PIN, OUTPUT);
+  pinMode(JACK3_PIN, OUTPUT);
   pinMode(JACK4_PIN, OUTPUT);
   pinMode(JACK5_PIN, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
 
   Serial.begin(115200);
   Timer1.initialize(1000); // microseconds
+  Timer1.pwm(JACK2_PIN, 0);
+  Timer1.pwm(JACK3_PIN, 0);
   Timer1.pwm(JACK4_PIN, 0);
   Timer1.pwm(JACK5_PIN, 0);
 
@@ -53,19 +74,19 @@ void setup() {
 
   // fill the pattern buffer with the indices of the note LUT
   for(byte i=0; i<STEPS_MAX; i+=1) {
-    pattern_b[i] = pattern_a[i] = i%NOTES_MAX;
+    m2_pattern_b[i] = m2_pattern_a[i] = m1_pattern_b[i] = m1_pattern_a[i] = i%NOTES_MAX;
   }
 }
 
 void sampleAnalogInputs() {
-  pot1 = analogRead(A6); // probability a
-  pot4 = analogRead(A4); // probability b
-
-  pot2 = analogRead(A3); // num steps
-  pot3 = analogRead(A7); // amplitude
-  jack1 = analogRead(A2); // (unused)
-  jack2 = analogRead(A1); // (unused)
-  jack3 = analogRead(A0); // trigger
+  pot1 = analogRead(POT1_PIN);
+  pot2 = analogRead(POT2_PIN);
+  pot3 = analogRead(POT3_PIN);
+  pot4 = analogRead(POT4_PIN);
+  pot5 = analogRead(POT5_PIN);
+  
+  jack1 = analogRead(JACK1_PIN);
+  switch1 = analogRead(SWITCH1_PIN);
 }
 
 void updateLED() {
@@ -78,46 +99,59 @@ int voltageToPWM(int millivolts) {
 
 void loop() {
   sampleAnalogInputs();
-  int probability_a = map(pot1, 0, 1023, 0, 1000);
-  int probability_b = map(pot1, 0, 1023, 0, 1000);
 
-  int steps = map(pot2, 0, 1023, 1, STEPS_MAX);
-  // what to use pot3 for? maybe bank-switching different scales?
-  // int amplitude = map(pot3, 0, 1023, 0, 5000);
+  int m1_probability = map(pot2, 0, 1023, 0, 1000);
+  int m1_steps = map(pot3, 0, 1023, 1, STEPS_MAX);
 
-  if(trigger && jack3 < 512) { // falling edge
+  int m2_probability = map(pot4, 0, 1023, 0, 1000);
+  int m2_steps = map(pot5, 0, 1023, 1, STEPS_MAX);
+  
+  if(trigger && jack1 < 512) { // falling edge
     trigger = false;
     updateLED();
-  } else if(!trigger && jack3 >= 512) { // rising edge
+  } else if(!trigger && jack1 >= 512) { // rising edge
     trigger = true;
     updateLED();
 
     // if a random number is under our PROB threshold,
-    //  change the current LUT index in the pattern
+    // change the current LUT index in the pattern
     // leave a small gap at the bottom to have a solid 'lock' area
-    if(random(25, 1000) < probability_a) {
-      pattern_a[patternIndex] = random(0, NOTES_MAX);
+    if(random(25, 1000) < m1_probability) {
+      m1_pattern_a[m1_pattern_index] = random(0, NOTES_MAX);
     }
-    if(random(25, 1000) < probability_b) {
-      pattern_b[patternIndex] = random(0, NOTES_MAX);
+      if(random(25, 1000) < m1_probability) {
+      m1_pattern_b[m1_pattern_index] = random(0, NOTES_MAX);
+    }
+    if(random(25, 1000) < m2_probability) {
+      m2_pattern_a[m2_pattern_index] = random(0, NOTES_MAX);
+    }
+    if(random(25, 1000) < m2_probability) {
+      m2_pattern_b[m2_pattern_index] = random(0, NOTES_MAX);
     }
 
     // pick the current value out of the pattern
-    //  and look up in the note LUT what voltage to output
+    // and look up in the note LUT what voltage to output
 
-    // Out A
-    int out = notes[ pattern_a[ patternIndex] ];
+    // m1 out
+    int out = notes[ m1_pattern_a[ m1_pattern_index] ];
+    out = voltageToPWM(out);
+    Timer1.setPwmDuty(JACK2_PIN, out);
+
+    out = notes[ m1_pattern_b[ m1_pattern_index] ];
+    out = voltageToPWM(out);
+    Timer1.setPwmDuty(JACK3_PIN, out);
+
+    // m2 out
+    out = notes[ m2_pattern_a[ m2_pattern_index] ];
     out = voltageToPWM(out);
     Timer1.setPwmDuty(JACK4_PIN, out);
 
-    // Out B
-    out = notes[ pattern_b[ patternIndex] ];
+    out = notes[ m2_pattern_b[ m2_pattern_index] ];
     out = voltageToPWM(out);
     Timer1.setPwmDuty(JACK5_PIN, out);
 
-    Serial.println(out);
-
     // reset pattern index to zero when it reaches our step count
-    patternIndex = (patternIndex + 1) % steps;
+    m1_pattern_index = (m1_pattern_index + 1) % m1_steps;
+    m2_pattern_index = (m2_pattern_index + 1) % m2_steps;
   }
 }
