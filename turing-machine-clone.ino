@@ -59,8 +59,8 @@ void setup() {
 
   Serial.begin(115200);
   Timer1.initialize(1000); // microseconds
-  Timer1.pwm(JACK2_PIN, 0);
-  Timer1.pwm(JACK3_PIN, 0);
+  // Timer1.pwm(JACK2_PIN, 0);
+  // Timer1.pwm(JACK3_PIN, 0);
   Timer1.pwm(JACK4_PIN, 0);
   Timer1.pwm(JACK5_PIN, 0);
 
@@ -130,13 +130,13 @@ void loop() {
     // and look up in the note LUT what voltage to output
 
     // m1 out
-    int out = notes[m1_pattern_a[m1_pattern_index]];
-    out = voltageToPWM(out);
-    Timer1.setPwmDuty(JACK2_PIN, out);
+    // int out = notes[m1_pattern_a[m1_pattern_index]];
+    // out = voltageToPWM(out);
+    // Timer1.setPwmDuty(JACK2_PIN, out);
 
-    out = notes[m1_pattern_b[m1_pattern_index]];
-    out = voltageToPWM(out);
-    Timer1.setPwmDuty(JACK3_PIN, out);
+    // out = notes[m1_pattern_b[m1_pattern_index]];
+    // out = voltageToPWM(out);
+    // Timer1.setPwmDuty(JACK3_PIN, out);
 
     // m2 out
     out = notes[m2_pattern_a[m2_pattern_index]];
