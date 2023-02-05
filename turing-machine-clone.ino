@@ -139,7 +139,7 @@ void loop() {
     // Timer1.setPwmDuty(JACK3_PIN, out);
 
     // m2 out
-    out = notes[m2_pattern_a[m2_pattern_index]];
+    int out = notes[m2_pattern_a[m2_pattern_index]];
     out = voltageToPWM(out);
     Timer1.setPwmDuty(JACK4_PIN, out);
 
