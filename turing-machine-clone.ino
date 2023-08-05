@@ -1,6 +1,3 @@
-// TimerOne from https://github.com/PaulStoffregen/TimerOne
-#include <TimerOne.h>
-
 // a loose clone of a clone of a clone
 
 // original: MTM Turning Machine
@@ -58,11 +55,6 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
 
   Serial.begin(115200);
-  Timer1.initialize(1000); // microseconds
-  // Timer1.pwm(JACK2_PIN, 0);
-  // Timer1.pwm(JACK3_PIN, 0);
-  Timer1.pwm(JACK4_PIN, 0);
-  Timer1.pwm(JACK5_PIN, 0);
 
   // fill the notes lookup table with half-note steps
   for (byte i = 0; i < NOTES_MAX; i++) {
@@ -130,25 +122,31 @@ void loop() {
     // and look up in the note LUT what voltage to output
 
     // m1 out
-    // int out = notes[m1_pattern_a[m1_pattern_index]];
-    // out = voltageToPWM(out);
-    // Timer1.setPwmDuty(JACK2_PIN, out);
+    {
+      int out = notes[m1_pattern_a[m1_pattern_index]];
+      out = voltageToPWM(out);
+      analogWrite(JACK2_PIN, out);
 
-    // out = notes[m1_pattern_b[m1_pattern_index]];
-    // out = voltageToPWM(out);
-    // Timer1.setPwmDuty(JACK3_PIN, out);
+      out = notes[m1_pattern_b[m1_pattern_index]];
+      out = voltageToPWM(out);
+      analogWrite(JACK3_PIN, out);
+
+      // reset pattern index to zero when it reaches our step count
+      m1_pattern_index = (m1_pattern_index + 1) % m1_steps;
+    }
 
     // m2 out
-    int out = notes[m2_pattern_a[m2_pattern_index]];
-    out = voltageToPWM(out);
-    Timer1.setPwmDuty(JACK4_PIN, out);
+    {
+      int out = notes[m2_pattern_a[m2_pattern_index]];
+      out = voltageToPWM(out);
+      analogWrite(JACK4_PIN, out);
 
-    out = notes[m2_pattern_b[m2_pattern_index]];
-    out = voltageToPWM(out);
-    Timer1.setPwmDuty(JACK5_PIN, out);
+      out = notes[m2_pattern_b[m2_pattern_index]];
+      out = voltageToPWM(out);
+      analogWrite(JACK5_PIN, out);
 
-    // reset pattern index to zero when it reaches our step count
-    m1_pattern_index = (m1_pattern_index + 1) % m1_steps;
-    m2_pattern_index = (m2_pattern_index + 1) % m2_steps;
+      // reset pattern index to zero when it reaches our step count
+      m2_pattern_index = (m2_pattern_index + 1) % m2_steps;
+    }    
   }
 }
